@@ -75,27 +75,27 @@ Source.get_debug_name = function()
 end
 
 
-Source._do_complete = function()
+Source._do_complete = function(context)
 	if Source.job == 0 then
 		return
 	end
 	local max_lines = conf:get('max_lines')
 
-	local cursor=api.nvim_win_get_cursor(0)
-	local cur_line = api.nvim_get_current_line()
-	local cur_line_before = string.sub(cur_line, 0, cursor[2])
-	local cur_line_after = string.sub(cur_line, cursor[2]+1) -- include current character
+	local cursor = context.cursor
+	local cur_line = context.cursor_line
+	local cur_line_before = context.cursor_before_line
+	local cur_line_after = context.cursor_after_line
 
 	local region_includes_beginning = false
 	local region_includes_end = false
-	if cursor[1] - max_lines <= 1 then region_includes_beginning = true end
-	if cursor[1] + max_lines >= fn['line']('$') then region_includes_end = true end
+	if cursor.line - max_lines <= 1 then region_includes_beginning = true end
+	if cursor.line + max_lines >= fn['line']('$') then region_includes_end = true end
 
-	local lines_before = api.nvim_buf_get_lines(0, cursor[1] - max_lines , cursor[1]-1, false)
+	local lines_before = api.nvim_buf_get_lines(0, cursor.line - max_lines , cursor.line-1, false)
 	table.insert(lines_before, cur_line_before)
 	local before = table.concat(lines_before, "\n")
 
-	local lines_after = api.nvim_buf_get_lines(0, cursor[1], cursor[1] + max_lines, false)
+	local lines_after = api.nvim_buf_get_lines(0, cursor.line, cursor.line + max_lines, false)
 	table.insert(lines_after, 1, cur_line_after)
 	local after = table.concat(lines_after, "\n")
 
@@ -116,9 +116,13 @@ Source._do_complete = function()
 end
 
 --- complete
-function Source.complete(self, request, callback)
+function Source.complete(self, params, callback)
+  if Source.callback then
+    callback()
+  end
 	Source.callback = callback
-	Source._do_complete()
+  Source.context = params.context
+	Source._do_complete(params.context)
 end
 
 Source._on_err = function(_, _, _)
@@ -153,10 +157,12 @@ Source._on_stdout = function(_, data, _)
       --   "docs": []
       -- }
 	-- dump(data)
+  local context = Source.context
 	local items = {}
 	local old_prefix = ""
 	local show_strength = conf:get('show_prediction_strength')
 	local base_priority = conf:get('priority')
+  local cursor = context.cursor
 
 	for _, jd in ipairs(data) do
 		if jd ~= nil and jd ~= '' then
@@ -176,22 +182,38 @@ Source._on_stdout = function(_, data, _)
 							filterText = result.new_prefix;
 							insertText = result.new_prefix;
 							data = result;
-							sortText = (result.details or '') .. result.new_prefix;
+							sortText = result.new_prefix;
 						}
 						if result.detail ~= nil then
+              -- item['sortText'] = result.detail .. item.sortText
 							local percent = tonumber(string.sub(result.detail, 0, -2))
 							if percent ~= nil then
 								item['priority'] = base_priority + percent * 0.001
 								item['labelDetails'] = {
-									detail = result.details
+									detail = result.detail
 								}
-								item['details'] = result.details
+								item['detail'] = result.detail
 								-- item.label = item.label .. ' ' .. result.detail
 							end
 						end
 						if result.kind then
 							item['kind'] = result.kind
 						end
+            dump(result)
+            if result.new_suffix ~= '' then
+              item['kind'] = 15 -- snippet
+              item['insertTextFormat'] = 2 -- snippet
+              local old_len = string.len(old_prefix)
+              item['textEdit'] = {
+                  range = {
+                    start = { line = cursor.line + 1, character = cursor.character - old_len + 1  };
+                    ["end"] = { line = cursor.line + 1, character = cursor.character + old_len + string.len(result.old_suffix) },
+                  };
+                  newText = result.new_prefix .. '$0' .. result.new_suffix
+                }
+              
+              dump(item)
+            end
 						table.insert(items, item)
 					end
 				else
