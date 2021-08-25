@@ -205,12 +205,14 @@ Source._on_stdout = function(_, data, _)
               item['insertTextFormat'] = 2 -- snippet
               local old_len = string.len(old_prefix)
               item['textEdit'] = {
-                  range = {
-                    start = { line = cursor.line + 1, character = cursor.character - old_len + 1  };
-                    ["end"] = { line = cursor.line + 1, character = cursor.character + old_len + string.len(result.old_suffix) },
-                  };
-                  newText = result.new_prefix .. '$0' .. result.new_suffix
-                }
+                range = {
+                  start = { line = cursor.line + 1, character = cursor.character - old_len + 1  };
+                  ["end"] = { line = cursor.line + 1, character = cursor.character + old_len + string.len(result.old_suffix) },
+                };
+                newText = string.gsub(result.new_prefix, "([$\\}])", "\\%1")
+                  .. '$0'
+                  .. string.gsub(result.new_suffix, "([$\\}])", "\\%1")
+              }
               
               dump(item)
             end
