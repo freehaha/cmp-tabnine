@@ -2,6 +2,7 @@ local cmp = require'cmp'
 local api = vim.api
 local fn = vim.fn
 local conf = require('cmp_tabnine.config')
+local lsp_types = require'cmp.types.lsp'
 
 local function dump(...)
     local objects = vim.tbl_map(vim.inspect, {...})
@@ -199,10 +200,9 @@ Source._on_stdout = function(_, data, _)
 						if result.kind then
 							item['kind'] = result.kind
 						end
-            dump(result)
             if result.new_suffix ~= '' then
-              item['kind'] = 15 -- snippet
-              item['insertTextFormat'] = 2 -- snippet
+              item['kind'] = lsp_types.CompletionItemKind.Snippet
+              item['insertTextFormat'] = lsp_types.InsertTextFormat.Snippet
               local old_len = string.len(old_prefix)
               item['textEdit'] = {
                 range = {
@@ -214,7 +214,6 @@ Source._on_stdout = function(_, data, _)
                   .. string.gsub(result.new_suffix, "([$\\}])", "\\%1")
               }
               
-              dump(item)
             end
 						table.insert(items, item)
 					end
