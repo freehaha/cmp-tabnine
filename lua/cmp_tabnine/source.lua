@@ -200,7 +200,7 @@ Source._on_stdout = function(_, data, _)
 						if result.kind then
 							item['kind'] = result.kind
 						end
-            if result.new_suffix ~= '' then
+            if result.new_suffix ~= '' or result.old_suffix ~= '' then
               item['kind'] = lsp_types.CompletionItemKind.Snippet
               item['insertTextFormat'] = lsp_types.InsertTextFormat.Snippet
               local old_len = string.len(old_prefix)
@@ -213,7 +213,6 @@ Source._on_stdout = function(_, data, _)
                   .. '$0'
                   .. string.gsub(result.new_suffix, "([$\\}])", "\\%1")
               }
-              
             end
 						table.insert(items, item)
 					end
