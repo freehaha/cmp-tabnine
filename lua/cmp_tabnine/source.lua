@@ -193,8 +193,7 @@ Source._on_stdout = function(_, data, _)
 								item['labelDetails'] = {
 									detail = result.detail
 								}
-								item['detail'] = result.detail
-								-- item.label = item.label .. ' ' .. result.detail
+								item['details'] = result.detail
 							end
 						end
 						if result.kind then
@@ -247,7 +246,7 @@ Source._on_stdout = function(_, data, _)
 end
 
 function Source:get_trigger_characters(params)
-  return { ':', '.',  '(', '[', ' ', }
+  return { ':', '.',  '(', '[', }
 end
 
 return Source
