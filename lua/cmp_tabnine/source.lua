@@ -193,7 +193,7 @@ Source._on_stdout = function(_, data, _)
 								item['labelDetails'] = {
 									detail = result.detail
 								}
-								item['details'] = result.detail
+								item['detail'] = result.detail
 							end
 						end
 						if result.kind then
