@@ -205,8 +205,8 @@ Source._on_stdout = function(_, data, _)
               local old_len = string.len(old_prefix)
               item['textEdit'] = {
                 range = {
-                  start = { line = cursor.line + 1, character = cursor.character - old_len + 1  };
-                  ["end"] = { line = cursor.line + 1, character = cursor.character + old_len + string.len(result.old_suffix) },
+                  start = { line = cursor.line + 1, character = cursor.character - old_len  };
+                  ["end"] = { line = cursor.line + 1, character = cursor.character + string.len(result.old_suffix)  },
                 };
                 newText = string.gsub(result.new_prefix, "([$\\}])", "\\%1")
                   .. '$0'
