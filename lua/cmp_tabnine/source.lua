@@ -1,12 +1,12 @@
-local cmp = require'cmp'
+local cmp = require("cmp")
 local api = vim.api
 local fn = vim.fn
-local conf = require('cmp_tabnine.config')
-local lsp_types = require'cmp.types.lsp'
+local conf = require("cmp_tabnine.config")
+local lsp_types = require("cmp.types.lsp")
 
 local function dump(...)
-    local objects = vim.tbl_map(vim.inspect, {...})
-    print(unpack(objects))
+	local objects = vim.tbl_map(vim.inspect, { ... })
+	print(unpack(objects))
 end
 
 local function json_decode(data)
@@ -18,45 +18,46 @@ local function json_decode(data)
 	end
 end
 
-
 -- do this once on init, otherwise on restart this dows not work
-local binaries_folder = fn.expand('<sfile>:p:h:h:h') .. '/binaries'
+local binaries_folder = fn.expand("<sfile>:p:h:h:h") .. "/binaries"
 
 -- locate the binary here, as expand is relative to the calling script name
 local function binary()
-	local versions_folders = fn.globpath(binaries_folder, '*', false, true)
+	local versions_folders = fn.globpath(binaries_folder, "*", false, true)
 	local versions = {}
 	for _, path in ipairs(versions_folders) do
-		for version in string.gmatch(path, '/([0-9.]+)$') do
+		for version in string.gmatch(path, "/([0-9.]+)$") do
 			if version then
-				table.insert(versions, {path=path, version=version})
+				table.insert(versions, { path = path, version = version })
 			end
 		end
 	end
-	table.sort(versions, function (a, b) return a.version < b.version end)
+	table.sort(versions, function(a, b)
+		return a.version < b.version
+	end)
 	local latest = versions[#versions]
 
 	local platform = nil
-	local arch, _ = string.gsub(fn.system('uname -m'), '\n$', '')
-	if fn.has('win32') == 1 then
-		platform = 'i686-pc-windows-gnu'
-	elseif fn.has('win64') == 1 then
-		platform = 'x86_64-pc-windows-gnu'
-	elseif fn.has('mac') == 1 then
-		if arch == 'arm64' then
-			platform = 'aarch64-apple-darwin'
+	local arch, _ = string.gsub(fn.system("uname -m"), "\n$", "")
+	if fn.has("win32") == 1 then
+		platform = "i686-pc-windows-gnu"
+	elseif fn.has("win64") == 1 then
+		platform = "x86_64-pc-windows-gnu"
+	elseif fn.has("mac") == 1 then
+		if arch == "arm64" then
+			platform = "aarch64-apple-darwin"
 		else
-			platform = arch .. '-apple-darwin'
+			platform = arch .. "-apple-darwin"
 		end
-	elseif fn.has('unix') == 1 then
-		platform = arch .. '-unknown-linux-musl'
+	elseif fn.has("unix") == 1 then
+		platform = arch .. "-unknown-linux-musl"
 	end
-	return latest.path .. '/' .. platform .. '/' .. 'TabNine'
+	return latest.path .. "/" .. platform .. "/" .. "TabNine"
 end
 
 local Source = {
-	callback = nil;
-	job = 0;
+	callback = nil,
+	job = 0,
 }
 
 function Source.new()
@@ -65,34 +66,35 @@ function Source.new()
 	return self
 end
 
-
 Source.is_available = function()
 	return (Source.job ~= 0)
 end
 
-
 Source.get_debug_name = function()
-	return 'TabNine'
+	return "TabNine"
 end
 
-
-Source._do_complete = function(context)
+Source._do_complete = function(ctx)
 	if Source.job == 0 then
 		return
 	end
-	local max_lines = conf:get('max_lines')
+	local max_lines = conf:get("max_lines")
 
-	local cursor = context.cursor
-	local cur_line = context.cursor_line
-	local cur_line_before = context.cursor_before_line
-	local cur_line_after = context.cursor_after_line
+	local cursor = ctx.cursor
+	local cur_line = ctx.cursor_line
+	local cur_line_before = ctx.cursor_before_line
+	local cur_line_after = ctx.cursor_after_line
 
 	local region_includes_beginning = false
 	local region_includes_end = false
-	if cursor.line - max_lines <= 1 then region_includes_beginning = true end
-	if cursor.line + max_lines >= fn['line']('$') then region_includes_end = true end
+	if cursor.line - max_lines <= 1 then
+		region_includes_beginning = true
+	end
+	if cursor.line + max_lines >= fn["line"]("$") then
+		region_includes_end = true
+	end
 
-	local lines_before = api.nvim_buf_get_lines(0, cursor.line - max_lines , cursor.line-1, false)
+	local lines_before = api.nvim_buf_get_lines(0, cursor.line - max_lines, cursor.line - 1, false)
 	table.insert(lines_before, cur_line_before)
 	local before = table.concat(lines_before, "\n")
 
@@ -109,8 +111,8 @@ Source._do_complete = function(context)
 			region_includes_beginning = region_includes_beginning,
 			region_includes_end = region_includes_end,
 			filename = fn["expand"]("%:p"),
-			max_num_results = conf:get('max_num_results')
-		}
+			max_num_results = conf:get("max_num_results"),
+		},
 	}
 
 	fn.chansend(Source.job, fn.json_encode(req) .. "\n")
@@ -118,16 +120,15 @@ end
 
 --- complete
 function Source.complete(self, params, callback)
-  if Source.callback then
-    callback()
-  end
+	if Source.callback then
+		callback()
+	end
 	Source.callback = callback
-  Source.context = params.context
+	Source.context = params.context
 	Source._do_complete(params.context)
 end
 
-Source._on_err = function(_, _, _)
-end
+Source._on_err = function(_, _, _) end
 
 Source._on_exit = function(_, code)
 	-- restart..
@@ -136,87 +137,92 @@ Source._on_exit = function(_, code)
 		return
 	end
 
-	Source.job = fn.jobstart({binary()}, {
-		on_stderr = Source._on_stderr;
-		on_exit = Source._on_exit;
-		on_stdout = Source._on_stdout;
+	Source.job = fn.jobstart({ binary() }, {
+		on_stderr = Source._on_stderr,
+		on_exit = Source._on_exit,
+		on_stdout = Source._on_stdout,
 	})
 end
 
 Source._on_stdout = function(_, data, _)
-      -- {
-      --   "old_prefix": "wo",
-      --   "results": [
-      --     {
-      --       "new_prefix": "world",
-      --       "old_suffix": "",
-      --       "new_suffix": "",
-      --       "detail": "64%"
-      --     }
-      --   ],
-      --   "user_message": [],
-      --   "docs": []
-      -- }
+	-- {
+	--   "old_prefix": "wo",
+	--   "results": [
+	--     {
+	--       "new_prefix": "world",
+	--       "old_suffix": "",
+	--       "new_suffix": "",
+	--       "detail": "64%"
+	--     }
+	--   ],
+	--   "user_message": [],
+	--   "docs": []
+	-- }
 	-- dump(data)
-  local context = Source.context
+	local context = Source.context
 	local items = {}
 	local old_prefix = ""
-	local show_strength = conf:get('show_prediction_strength')
-	local base_priority = conf:get('priority')
-  local cursor = context.cursor
+	local show_strength = conf:get("show_prediction_strength")
+	local base_priority = conf:get("priority")
+	local cursor = context.cursor
 
 	for _, jd in ipairs(data) do
-		if jd ~= nil and jd ~= '' then
+		if jd ~= nil and jd ~= "" then
 			local response = json_decode(jd)
 			-- dump(response)
 			if response == nil then
 				-- the _on_exit callback should restart the server
 				-- fn.jobstop(Source.job)
-				dump('TabNine: json decode error: ', jd)
+				dump("TabNine: json decode error: ", jd)
 			else
 				local results = response.results
 				old_prefix = response.old_prefix
 				if results ~= nil then
 					for _, result in ipairs(results) do
 						local item = {
-							label = result.new_prefix;
-							filterText = result.new_prefix;
-							insertText = result.new_prefix;
-							data = result;
-							sortText = result.new_prefix;
+							label = result.new_prefix,
+							filterText = result.new_prefix,
+							insertText = result.new_prefix,
+							data = result,
+							sortText = result.new_prefix,
 						}
 						if result.detail ~= nil then
-              -- item['sortText'] = result.detail .. item.sortText
+							-- item['sortText'] = result.detail .. item.sortText
 							local percent = tonumber(string.sub(result.detail, 0, -2))
 							if percent ~= nil then
-								item['priority'] = base_priority + percent * 0.001
-								item['labelDetails'] = {
-									detail = result.detail
+								item["priority"] = base_priority + percent * 0.001
+								item["labelDetails"] = {
+									detail = result.detail,
 								}
-								item['detail'] = result.detail
+								item["detail"] = result.detail
 							end
 						end
 						if result.kind then
-							item['kind'] = result.kind
+							item["kind"] = result.kind
 						end
-            if result.new_suffix ~= '' or result.old_suffix ~= '' then
-              item['kind'] = lsp_types.CompletionItemKind.Snippet
-              item['insertTextFormat'] = lsp_types.InsertTextFormat.Snippet
-              local old_len = string.len(old_prefix)
-              item['textEdit'] = {
-                range = {
-                  start = { line = cursor.line + 1, character = cursor.character - old_len  };
-                  ["end"] = { line = cursor.line + 1, character = cursor.character + string.len(result.old_suffix)  },
-                };
-                newText = string.gsub(result.new_prefix, "([$\\}])", "\\%1")
-                  .. '$0'
-                  .. string.gsub(result.new_suffix, "([$\\}])", "\\%1")
-              }
-            end
+						if result.new_suffix ~= "" or result.old_suffix ~= "" then
+							item["kind"] = lsp_types.CompletionItemKind.Snippet
+							item["insertTextFormat"] = lsp_types.InsertTextFormat.Snippet
+							local old_len = string.len(old_prefix)
+							item["textEdit"] = {
+								range = {
+									start = { line = cursor.line + 1, character = cursor.character - old_len },
+									["end"] = {
+										line = cursor.line + 1,
+										character = cursor.character + string.len(result.old_suffix),
+									},
+								},
+								newText = string.gsub(result.new_prefix, "([$\\}])", "\\%1") .. "$0" .. string.gsub(
+									result.new_suffix,
+									"([$\\}])",
+									"\\%1"
+								),
+							}
+						end
 						table.insert(items, item)
 					end
 				else
-					dump('no results:', jd)
+					dump("no results:", jd)
 				end
 			end
 		end
@@ -233,20 +239,17 @@ Source._on_stdout = function(_, data, _)
 		end
 	end)
 
-	items = {unpack(items, 1, conf:get('max_num_results'))}
+	items = { unpack(items, 1, conf:get("max_num_results")) }
 	--
 	-- now, if we have a callback, send results
 	if Source.callback then
-		if #items == 0 then
-			return
-		end
 		Source.callback(items)
 	end
-	Source.callback = nil;
+	Source.callback = nil
 end
 
 function Source:get_trigger_characters(params)
-  return { ':', '.',  '(', '[', }
+	return { ":", ".", "(", "[" }
 end
 
 return Source
