@@ -202,6 +202,8 @@ Source._on_stdout = function(_, data, _)
 								item["labelDetails"] = {
 									detail = result.detail,
 								}
+								item["sortText"] = string.format("%02d", 100 - percent) .. item["sortText"]
+							else
 								item["detail"] = result.detail
 							end
 						end
@@ -226,6 +228,12 @@ Source._on_stdout = function(_, data, _)
 									"\\%1"
 								),
 							}
+						end
+						if result.documentation then
+							item["documentation"] = result.documentation
+						end
+						if result.deprecated then
+							item["deprecated"] = result.deprecated
 						end
 						table.insert(items, item)
 					end
